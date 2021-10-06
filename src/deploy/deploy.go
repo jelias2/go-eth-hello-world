@@ -57,8 +57,8 @@ func main() {
 	auth.GasLimit = uint64(10000000) // in units
 	auth.GasPrice = gasPrice
 
-	input := "1.0"
-	address, tx, instance, err := store.DeployStore(auth, client, input)
+	version := "1.0"
+	address, tx, instance, err := store.DeployStore(auth, client, version)
 	if err != nil {
 		log.Fatal(err)
 	}
