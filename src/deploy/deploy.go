@@ -17,7 +17,6 @@ import (
 func main() {
 
 	endpoint := os.Getenv("RINKEBY_ENDPOINT")
-	// pubKey := os.Getenv("RINKEBY_PUB_KEY")
 	privKey := os.Getenv("RINKEBY_PRIVATE_KEY")
 
 	client, err := ethclient.Dial(endpoint)

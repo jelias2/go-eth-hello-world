@@ -1,6 +1,7 @@
+# Overview
+- This is a simple project where I deploy, read and write to eth contract on Rinkeby using golang
+
 # Notes
-
-
 ##### To access solidity contract from golang
 1. Get the contract source code in solidity
 1. Generate the ABI ( application binary interface) using abigen

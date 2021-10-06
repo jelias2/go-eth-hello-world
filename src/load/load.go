@@ -19,13 +19,14 @@ func main() {
 	}
 
 	// Address of the contract we wish to query
-	address := common.HexToAddress("0x147B8eb97fD247D06C4006D269c90C1908Fb5D54")
+	contract_addr := "0x5C12097027a35803f8f75B8c1434F092841ca4B2"
+	address := common.HexToAddress(contract_addr)
 	// using the client and the address create an instance of the contact with in our code
 	store_instance, err := store.NewStore(address, client)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("contract is loaded")
+	fmt.Printf("contract is loaded from %s \n", contract_addr)
 
 	// Call the contract (*store.StoreCaller).Version(opts *bind.CallOpts)
 	// CallOpts is the collection of options to fine tune a contract call request, such as pending, from, and blocknumber
