@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/jelias2/go-eth-hello-world/src/decimal"
+	"github.com/jelias2/go-eth-hello-world/src/external-contracts/aave/AaveProtocolDataProvider"
 	"github.com/jelias2/go-eth-hello-world/src/external-contracts/aave/ILendingPool"
 	"github.com/jelias2/go-eth-hello-world/src/external-contracts/aave/ILendingPoolAddressProvider"
 )
@@ -35,6 +36,47 @@ func logAccountStruct(input struct {
 	)
 }
 
+func logLendingPoolStruct(input struct {
+	AvailableLiquidity      *big.Int
+	TotalStableDebt         *big.Int
+	TotalVariableDebt       *big.Int
+	LiquidityRate           *big.Int
+	VariableBorrowRate      *big.Int
+	StableBorrowRate        *big.Int
+	AverageStableBorrowRate *big.Int
+	LiquidityIndex          *big.Int
+	VariableBorrowIndex     *big.Int
+	LastUpdateTimestamp     *big.Int
+}) {
+	// No decimals in solditiy everything needs to be moved by 18 decimal places
+	six := decimal.NewDec(1e6)
+
+	fmt.Printf("\n-----\tReserve Data Dump\t-----\n\t"+
+		"AvailableLiquidity: %v \n\t"+
+		"TotalStableDebt: %v \n\t"+
+		"TotalVariableDebt: %v \n\t"+
+		"LiquidityRate: %v \n\t"+
+		"StableBorrowRate: %v \n\t"+
+		"AverageStableBorrowRate: %v \n\t"+
+		"VariableBorrowRate: %v \n\t"+
+		"LastUpdateTimestamp: %v \n"+
+		"---------------------------\n",
+		decimal.NewDecFromBigInt(input.AvailableLiquidity).Quo(six).String(),
+		decimal.NewDecFromBigInt(input.TotalStableDebt).Quo(six).String(),
+		decimal.NewDecFromBigInt(input.TotalVariableDebt).Quo(six).String(),
+		decimal.NewDecFromBigInt(input.LiquidityRate).Quo(six).String(),
+		decimal.NewDecFromBigInt(input.StableBorrowRate).Quo(six).String(),
+		decimal.NewDecFromBigInt(input.AverageStableBorrowRate).Quo(six).String(),
+		decimal.NewDecFromBigInt(input.VariableBorrowRate).Quo(six).String(),
+		decimal.NewDecFromBigInt(input.LastUpdateTimestamp).Quo(six).String(),
+	)
+}
+
+const (
+	LendingPoolAddressProviderAddress = "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
+	USDT_MAINNET_ADDRESS              = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+)
+
 func main() {
 
 	endpoint := os.Getenv("MAINNET_ENDPOINT")
@@ -51,11 +93,10 @@ func main() {
 	aave_account_addr := common.HexToAddress(my_aave_account_addr)
 
 	// Address of the Mainnet LendingPoolAddressProvider contract we wish to query
-	contract_addr := "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
-	address := common.HexToAddress(contract_addr)
+	lending_pool_address := common.HexToAddress(LendingPoolAddressProviderAddress)
 
 	// using the client and the address create an instance of the contact with in our code
-	aave_instance, err := ILendingPoolAddressProvider.NewAave(address, client)
+	aave_instance, err := ILendingPoolAddressProvider.NewAave(lending_pool_address, client)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,7 +107,14 @@ func main() {
 		log.Print("Error calling GetLendingPool contract function!")
 		log.Fatal(err)
 	}
+	price_oracle, err := aave_instance.GetPriceOracle(nil)
+	if err != nil {
+		log.Print("Error calling GetPriceOracle contract function!")
+		log.Fatal(err)
+	}
+
 	fmt.Printf("Current LendingPool address is: %v \n", lendingPoolAddress)
+	fmt.Printf("Current Price Oracle address is: %v \n", price_oracle)
 
 	// Create a read-only caller to the aave lending pool
 	lendingPoolCaller, err := ILendingPool.NewAaveCaller(lendingPoolAddress, client)
@@ -83,13 +131,40 @@ func main() {
 	// log the account data
 	logAccountStruct(account_struct)
 
-	marketID, err := aave_instance.GetMarketId(nil)
+	addressProvider, err := lendingPoolCaller.GetAddressesProvider(nil)
 	if err != nil {
-		log.Print("Error calling getMarketID!")
+		log.Print("Error getting LendingPool Address!")
+		log.Fatal(err)
+	}
+	fmt.Printf("Address Provider: %v \n", addressProvider)
+
+	//Create the Aave Protocol Data Provider, not sure if the aave_account_address is the proper one to pass in
+	aave_data_provider_caller, err := AaveProtocolDataProvider.NewAaveProtocolDataProviderCaller(lendingPoolAddress, client)
+	if err != nil {
+		log.Print("Error creating aave_data_provider_caller_object!")
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Current MarketID: %v \n", marketID)
+	reserve_data, err := aave_data_provider_caller.GetReserveData(nil, common.HexToAddress(USDT_MAINNET_ADDRESS))
+	if err != nil {
+		log.Print("Error getting token data!")
+		log.Fatal(err)
+	}
+
+	logLendingPoolStruct(reserve_data)
+
+	// 	for index, token := range token_data {
+
+	// 		fmt.Print("\n %d. Name: %s Address: %s", index, token.Symbol, token.TokenAddress)
+	// 	}
+
+	// 	marketID, err := aave_instance.GetMarketId(nil)
+	// 	if err != nil {
+	// 		log.Print("Error calling getMarketID!")
+	// 		log.Fatal(err)
+	// 	}
+
+	// 	fmt.Printf("Current MarketID: %v \n", marketID)
 
 	// 	marketID, err := aave_instance.G(nil)
 	//   if err != nil {
