@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"log"
+	"math"
 	"math/big"
 	"os"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/jelias2/go-eth-hello-world/src/decimal"
 	"github.com/jelias2/go-eth-hello-world/src/external-contracts/aave/AaveProtocolDataProvider"
@@ -48,8 +50,14 @@ func logLendingPoolStruct(input struct {
 	VariableBorrowIndex     *big.Int
 	LastUpdateTimestamp     *big.Int
 }) {
+	// https://docs.aave.com/developers/the-core-protocol/lendingpool#getreservedata
+	// data is returned in ray units = 10^27
 	// No decimals in solditiy everything needs to be moved by 18 decimal places
 	six := decimal.NewDec(1e6)
+	//RAY := math.Pow(10, 27) // 10 to the power 27
+	RAY := new(big.Float).SetUint64(uint64(math.Pow(10, 25)))
+
+	f := new(big.Float).SetInt(input.VariableBorrowRate)
 
 	fmt.Printf("\n-----\tReserve Data Dump\t-----\n\t"+
 		"AvailableLiquidity: %v \n\t"+
@@ -67,7 +75,8 @@ func logLendingPoolStruct(input struct {
 		decimal.NewDecFromBigInt(input.LiquidityRate).Quo(six).String(),
 		decimal.NewDecFromBigInt(input.StableBorrowRate).Quo(six).String(),
 		decimal.NewDecFromBigInt(input.AverageStableBorrowRate).Quo(six).String(),
-		decimal.NewDecFromBigInt(input.VariableBorrowRate).Quo(six).String(),
+		//decimal.NewDecFromBigInt(input.VariableBorrowRate).Quo(six).String(),
+		new(big.Float).Quo(f, RAY),
 		decimal.NewDecFromBigInt(input.LastUpdateTimestamp).Quo(six).String(),
 	)
 }
@@ -79,7 +88,15 @@ const (
 
 func main() {
 
+	fmt.Println("Starting!")
 	endpoint := os.Getenv("MAINNET_ENDPOINT")
+
+	if endpoint == "" {
+		fmt.Println("MAINNET_ENDPOINT environment variable is empty, please source and try again")
+		fmt.Println("exiting...")
+		os.Exit(0)
+	}
+
 	client, err := ethclient.Dial(endpoint)
 	if err != nil {
 		log.Fatal(err)
@@ -145,6 +162,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// https://docs.aave.com/developers/the-core-protocol/lendingpool#getreservedata
+	// data is returned in ray units = 10^27
 	reserve_data, err := aave_data_provider_caller.GetReserveData(nil, common.HexToAddress(USDT_MAINNET_ADDRESS))
 	if err != nil {
 		log.Print("Error getting token data!")
