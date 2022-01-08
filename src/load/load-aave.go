@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 	"os"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -39,9 +41,44 @@ func logAccountStruct(input struct {
 
 func rayValueToPercentage(rayValue *big.Int) string {
 	var ray big.Int
+	// This ray is only 25 positions, 27 give decimals APR, 25 give percentage -> 0.02 = 2%
 	ray.SetString("10000000000000000000000000", 10)
 	twentyfive := decimal.NewDecFromBigInt(&ray)
 	return decimal.NewDecFromBigInt(rayValue).Quo(twentyfive).String()
+}
+
+// Yes ugly, first get it to work, then get it pretty, premature optimzation is the root of all evil
+func stringPercentageToFloat(percentage string) float64 {
+	val, err := strconv.ParseFloat(percentage, 64)
+	if err != nil {
+		fmt.Printf("Error converting string percentage to float: %s \n", err.Error())
+	}
+	//fmt.Printf("Succuessfully converted %s -> %f \n", percentage, val)
+	return val
+}
+
+/*
+https://docs.aave.com/developers/guides/apy-and-apr
+
+  depositAPR = liquidityRate/RAY
+  variableBorrowAPR = variableBorrowRate/RAY
+  stableBorrowAPR = variableBorrowRate/ray
+
+  depositAPY = ((1 + (depositAPR / SECONDS_PER_YEAR)) ^ SECONDS_PER_YEAR) - 1
+  variableBorrowAPY = ((1 + (variableBorrowAPR / SECONDS_PER_YEAR)) ^ SECONDS_PER_YEAR) - 1
+  stableBorrowAPY = ((1 + (stableBorrowAPR / SECONDS_PER_YEAR)) ^ SECONDS_PER_YEAR) - 1
+
+  APY = ((1 + (APR / SECONDS_PER_YEAR)) ^ SECONDS_PER_YEAR) - 1
+*/
+
+func aprToAPY(inputAPR *big.Int) float64 {
+
+	var secPerYear float64 = 31536000
+	aprString := rayValueToPercentage(inputAPR)
+	aprFloat := stringPercentageToFloat(aprString) / 100
+	apy := math.Pow((1+(aprFloat/secPerYear)), secPerYear) - 1
+	return apy
+
 }
 
 func logLendingPoolStruct(input struct {
@@ -67,20 +104,26 @@ func logLendingPoolStruct(input struct {
 		"TotalStableDebt: %v \n\t"+
 		"TotalVariableDebt: %v \n\t"+
 		"LiquidityRate: %v \n\t"+
-		"Stable Borrow APR: %v \n\t"+
 		"AverageStableBorrowRate: %v \n\t"+
+		"Stable Borrow APR: %v \n\t"+
+		"Stable Borrow APY: %.2f \n\t"+
 		"Variable Borrow APR: %v \n\t"+
+		"Variable Borrow APY: %.2f \n\t"+
 		"Deposit APR: %v \n\t"+
+		"Deposit APY: %.2f \n\t"+
 		"LastUpdateTimestamp: %v \n"+
 		"---------------------------\n",
 		input.AvailableLiquidity,
 		decimal.NewDecFromBigInt(input.TotalStableDebt).Quo(eighteen).String(),
 		decimal.NewDecFromBigInt(input.TotalVariableDebt).Quo(eighteen).String(),
 		input.LiquidityRate,
-		rayValueToPercentage(input.StableBorrowRate),
 		input.AverageStableBorrowRate,
+		rayValueToPercentage(input.StableBorrowRate),
+		aprToAPY(input.StableBorrowRate)*100,
 		rayValueToPercentage(input.VariableBorrowRate),
+		aprToAPY(input.VariableBorrowRate)*100,
 		rayValueToPercentage(input.LiquidityRate),
+		aprToAPY(input.LiquidityRate)*100,
 		decimal.NewDecFromBigInt(input.LastUpdateTimestamp).Quo(eighteen).String(),
 	)
 }
