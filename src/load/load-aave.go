@@ -37,13 +37,11 @@ func logAccountStruct(input struct {
 	)
 }
 
-func rayToPercentage(rayValue *big.Int) string {
-
+func rayValueToPercentage(rayValue *big.Int) string {
 	var ray big.Int
 	ray.SetString("10000000000000000000000000", 10)
 	twentyfive := decimal.NewDecFromBigInt(&ray)
 	return decimal.NewDecFromBigInt(rayValue).Quo(twentyfive).String()
-
 }
 
 func logLendingPoolStruct(input struct {
@@ -72,15 +70,17 @@ func logLendingPoolStruct(input struct {
 		"Stable Borrow APR: %v \n\t"+
 		"AverageStableBorrowRate: %v \n\t"+
 		"Variable Borrow APR: %v \n\t"+
+		"Deposit APR: %v \n\t"+
 		"LastUpdateTimestamp: %v \n"+
 		"---------------------------\n",
 		input.AvailableLiquidity,
 		decimal.NewDecFromBigInt(input.TotalStableDebt).Quo(eighteen).String(),
 		decimal.NewDecFromBigInt(input.TotalVariableDebt).Quo(eighteen).String(),
 		input.LiquidityRate,
-		rayToPercentage(input.StableBorrowRate),
+		rayValueToPercentage(input.StableBorrowRate),
 		input.AverageStableBorrowRate,
-		rayToPercentage(input.VariableBorrowRate),
+		rayValueToPercentage(input.VariableBorrowRate),
+		rayValueToPercentage(input.LiquidityRate),
 		decimal.NewDecFromBigInt(input.LastUpdateTimestamp).Quo(eighteen).String(),
 	)
 }
