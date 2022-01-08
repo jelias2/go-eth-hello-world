@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"math"
 	"math/big"
 	"os"
 
@@ -38,6 +37,15 @@ func logAccountStruct(input struct {
 	)
 }
 
+func rayToPercentage(rayValue *big.Int) string {
+
+	var ray big.Int
+	ray.SetString("10000000000000000000000000", 10)
+	twentyfive := decimal.NewDecFromBigInt(&ray)
+	return decimal.NewDecFromBigInt(rayValue).Quo(twentyfive).String()
+
+}
+
 func logLendingPoolStruct(input struct {
 	AvailableLiquidity      *big.Int
 	TotalStableDebt         *big.Int
@@ -53,37 +61,34 @@ func logLendingPoolStruct(input struct {
 	// https://docs.aave.com/developers/the-core-protocol/lendingpool#getreservedata
 	// data is returned in ray units = 10^27
 	// No decimals in solditiy everything needs to be moved by 18 decimal places
-	six := decimal.NewDec(1e6)
+	eighteen := decimal.NewDec(1e18)
 	//RAY := math.Pow(10, 27) // 10 to the power 27
-	RAY := new(big.Float).SetUint64(uint64(math.Pow(10, 25)))
-
-	f := new(big.Float).SetInt(input.VariableBorrowRate)
 
 	fmt.Printf("\n-----\tReserve Data Dump\t-----\n\t"+
 		"AvailableLiquidity: %v \n\t"+
 		"TotalStableDebt: %v \n\t"+
 		"TotalVariableDebt: %v \n\t"+
 		"LiquidityRate: %v \n\t"+
-		"StableBorrowRate: %v \n\t"+
+		"Stable Borrow APR: %v \n\t"+
 		"AverageStableBorrowRate: %v \n\t"+
-		"VariableBorrowRate: %v \n\t"+
+		"Variable Borrow APR: %v \n\t"+
 		"LastUpdateTimestamp: %v \n"+
 		"---------------------------\n",
-		decimal.NewDecFromBigInt(input.AvailableLiquidity).Quo(six).String(),
-		decimal.NewDecFromBigInt(input.TotalStableDebt).Quo(six).String(),
-		decimal.NewDecFromBigInt(input.TotalVariableDebt).Quo(six).String(),
-		decimal.NewDecFromBigInt(input.LiquidityRate).Quo(six).String(),
-		decimal.NewDecFromBigInt(input.StableBorrowRate).Quo(six).String(),
-		decimal.NewDecFromBigInt(input.AverageStableBorrowRate).Quo(six).String(),
-		//decimal.NewDecFromBigInt(input.VariableBorrowRate).Quo(six).String(),
-		new(big.Float).Quo(f, RAY),
-		decimal.NewDecFromBigInt(input.LastUpdateTimestamp).Quo(six).String(),
+		input.AvailableLiquidity,
+		decimal.NewDecFromBigInt(input.TotalStableDebt).Quo(eighteen).String(),
+		decimal.NewDecFromBigInt(input.TotalVariableDebt).Quo(eighteen).String(),
+		input.LiquidityRate,
+		rayToPercentage(input.StableBorrowRate),
+		input.AverageStableBorrowRate,
+		rayToPercentage(input.VariableBorrowRate),
+		decimal.NewDecFromBigInt(input.LastUpdateTimestamp).Quo(eighteen).String(),
 	)
 }
 
 const (
 	LendingPoolAddressProviderAddress = "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
 	USDT_MAINNET_ADDRESS              = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+	TUSD_MAINNET_ASSET_ADDRESS        = "0x0000000000085d4780B73119b644AE5ecd22b376"
 )
 
 func main() {
@@ -164,33 +169,32 @@ func main() {
 
 	// https://docs.aave.com/developers/the-core-protocol/lendingpool#getreservedata
 	// data is returned in ray units = 10^27
-	reserve_data, err := aave_data_provider_caller.GetReserveData(nil, common.HexToAddress(USDT_MAINNET_ADDRESS))
+	reserve_data, err := aave_data_provider_caller.GetReserveData(nil, common.HexToAddress(TUSD_MAINNET_ASSET_ADDRESS))
 	if err != nil {
 		log.Print("Error getting token data!")
 		log.Fatal(err)
 	}
 
 	logLendingPoolStruct(reserve_data)
-
-	// 	for index, token := range token_data {
-
-	// 		fmt.Print("\n %d. Name: %s Address: %s", index, token.Symbol, token.TokenAddress)
-	// 	}
-
-	// 	marketID, err := aave_instance.GetMarketId(nil)
-	// 	if err != nil {
-	// 		log.Print("Error calling getMarketID!")
-	// 		log.Fatal(err)
-	// 	}
-
-	// 	fmt.Printf("Current MarketID: %v \n", marketID)
-
-	// 	marketID, err := aave_instance.G(nil)
-	//   if err != nil {
-	//     log.Print("Error calling TotalBorrows!")
-	//     log.Fatal(err)
-	//   }
-
-	//   fmt.Printf("Current Compound is CDai Total Supply: %v \n", TotalBorrows)
-
 }
+
+// 	for index, token := range token_data {
+
+// 		fmt.Print("\n %d. Name: %s Address: %s", index, token.Symbol, token.TokenAddress)
+// 	}
+
+// 	marketID, err := aave_instance.GetMarketId(nil)
+// 	if err != nil {
+// 		log.Print("Error calling getMarketID!")
+// 		log.Fatal(err)
+// 	}
+
+// 	fmt.Printf("Current MarketID: %v \n", marketID)
+
+// 	marketID, err := aave_instance.G(nil)
+//   if err != nil {
+//     log.Print("Error calling TotalBorrows!")
+//     log.Fatal(err)
+//   }
+
+//   fmt.Printf("Current Compound is CDai Total Supply: %v \n", TotalBorrows)
