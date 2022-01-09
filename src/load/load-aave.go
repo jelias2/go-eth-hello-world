@@ -22,7 +22,7 @@ const (
 
 func main() {
 
-	fmt.Println("Starting!")
+	fmt.Println("Starting load aave program!")
 	endpoint := os.Getenv("MAINNET_ENDPOINT")
 
 	if endpoint == "" {
