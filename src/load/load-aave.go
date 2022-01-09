@@ -10,22 +10,21 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-
 	"github.com/jelias2/go-eth-hello-world/src/decimal"
 	"github.com/jelias2/go-eth-hello-world/src/external-contracts/aave/AaveProtocolDataProvider"
 	"github.com/jelias2/go-eth-hello-world/src/external-contracts/aave/ILendingPool"
 	"github.com/jelias2/go-eth-hello-world/src/external-contracts/aave/ILendingPoolAddressProvider"
+	"github.com/jelias2/go-eth-hello-world/src/structs"
 )
 
-func logAccountStruct(input struct {
-	TotalCollateralETH          *big.Int
-	TotalDebtETH                *big.Int
-	AvailableBorrowsETH         *big.Int
-	CurrentLiquidationThreshold *big.Int
-	Ltv                         *big.Int
-	HealthFactor                *big.Int
-}) {
+const (
+	secPerYear                        float64 = 31536000
+	LendingPoolAddressProviderAddress         = "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
+	USDT_MAINNET_ADDRESS                      = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+	TUSD_MAINNET_ASSET_ADDRESS                = "0x0000000000085d4780B73119b644AE5ecd22b376"
+)
 
+func logAccountStruct(input structs.AaveAccount) {
 	// No decimals in solditiy everything needs to be moved by 18 decimal places
 	eighteen := decimal.NewDec(1e18)
 
@@ -72,8 +71,6 @@ https://docs.aave.com/developers/guides/apy-and-apr
 */
 
 func aprToAPY(inputAPR *big.Int) float64 {
-
-	var secPerYear float64 = 31536000
 	aprString := rayValueToPercentage(inputAPR)
 	aprFloat := stringPercentageToFloat(aprString) / 100
 	apy := math.Pow((1+(aprFloat/secPerYear)), secPerYear) - 1
@@ -104,11 +101,11 @@ func logLendingPoolStruct(input struct {
 		"TotalStableDebt: %v \n\t"+
 		"TotalVariableDebt: %v \n\t"+
 		"LiquidityRate: %v \n\t"+
-		"AverageStableBorrowRate: %v \n\t"+
+		"AverageStableBorrowRate: %v \n\n\t"+
 		"Stable Borrow APR: %v \n\t"+
-		"Stable Borrow APY: %.2f \n\t"+
+		"Stable Borrow APY: %.2f \n\n\t"+
 		"Variable Borrow APR: %v \n\t"+
-		"Variable Borrow APY: %.2f \n\t"+
+		"Variable Borrow APY: %.2f \n\n\t"+
 		"Deposit APR: %v \n\t"+
 		"Deposit APY: %.2f \n\t"+
 		"LastUpdateTimestamp: %v \n"+
@@ -127,12 +124,6 @@ func logLendingPoolStruct(input struct {
 		decimal.NewDecFromBigInt(input.LastUpdateTimestamp).Quo(eighteen).String(),
 	)
 }
-
-const (
-	LendingPoolAddressProviderAddress = "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
-	USDT_MAINNET_ADDRESS              = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-	TUSD_MAINNET_ASSET_ADDRESS        = "0x0000000000085d4780B73119b644AE5ecd22b376"
-)
 
 func main() {
 
@@ -188,13 +179,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	account_struct, err := lendingPoolCaller.GetUserAccountData(nil, aave_account_addr)
+	rawAccountStruct, err := lendingPoolCaller.GetUserAccountData(nil, aave_account_addr)
 	if err != nil {
 		log.Print("Error creating account_struct!")
 		log.Fatal(err)
 	}
+	aaveAccount := structs.NewAaveAccount(rawAccountStruct)
+
 	// log the account data
-	logAccountStruct(account_struct)
+	aaveAccount.LogAccountStruct()
 
 	addressProvider, err := lendingPoolCaller.GetAddressesProvider(nil)
 	if err != nil {
